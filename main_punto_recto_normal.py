@@ -54,8 +54,13 @@ def actualizar_excel_con_presupuesto(nuevo_presupuesto):
     else:
         df = pd.DataFrame(columns=['Presupuesto'])
 
-    # Añadir el nuevo presupuesto al DataFrame
-    df = df.append({'Presupuesto': nuevo_presupuesto}, ignore_index=True)
+    
+    
+    # Crear un nuevo DataFrame con el presupuesto a añadir
+    nuevo_df = pd.DataFrame({'Presupuesto': [nuevo_presupuesto]})
+    
+    # Concatenar el nuevo presupuesto al DataFrame existente
+    df = pd.concat([df, nuevo_df], ignore_index=True)
     
     # Guardar el DataFrame en el archivo Excel
     df.to_excel(file_path, index=False)
