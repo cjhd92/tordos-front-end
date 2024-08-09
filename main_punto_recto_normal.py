@@ -189,7 +189,7 @@ def main():
                 
 
                 # Encabezado
-                pdf.image('C:/Equipo/Curso/Jorge/Manejo de datos/logo.png', 10, 8, 33,25)  # Asegúrate de usar la ruta correcta al logo
+                pdf.image('assets/logo.png', 10, 8, 33, 25)
                 pdf.cell(200, 10, txt=f"Presupuesto (0062.3/2024)", ln=True, align='C')
                 #pdf.cell(200, 10, txt=f"Presupuesto (0062.3/2024) - {fecha.strftime('%d/%m/%Y')}", ln=True, align='C')
 
