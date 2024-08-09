@@ -4,6 +4,7 @@ import bisect
 from fpdf import FPDF
 import pandas as pd
 import os
+#versio 1
 
 
 def validar_telefono(telefono):
