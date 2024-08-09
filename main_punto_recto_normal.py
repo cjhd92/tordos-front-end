@@ -284,9 +284,11 @@ def main():
             pdf.set_xy(x_inicio, y_inicio)
             pdf.cell(left_column_width, 10, f'Con la aprobación del presupuesto el', border=0, ln=0)
             pdf.set_xy(120, y_inicio)
+            precio_descuento = Decimal(precio_descuento).quantize(Decimal('0.00'))
             pdf.cell(right_column_width, 10, f'Sub - Total      {precio_descuento} EUR', border=0, ln=0)
             y_inicio += 6
             iva = precio_descuento * 0.21
+            iva = Decimal(iva).quantize(Decimal('0.00'))
             pdf.set_xy(x_inicio, y_inicio)
             pdf.cell(left_column_width, 10, f'cliente debe abonar el 50% del monto ', border=0, ln=0)
             pdf.set_xy(120, y_inicio)
