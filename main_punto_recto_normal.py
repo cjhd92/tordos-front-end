@@ -6,10 +6,19 @@ import pandas as pd
 import os
 #versio 1
 
+""" 
+def validar_telefono(telefono):
+   
+    return telefono.isdigit() and len(telefono) == 9 """
 
 def validar_telefono(telefono):
-    """Valida que el teléfono tenga exactamente 9 dígitos."""
-    return telefono.isdigit() and len(telefono) == 9
+    """Función para validar el número de teléfono con exactamente 9 dígitos."""
+    import re
+    # Expresión regular para permitir solo dígitos
+    patron = r'^\d{9}$'
+    if re.match(patron, telefono):
+        return True
+    return False
 
 
 def seleccionar_proximo_valor_disponible(medida, valores_disponibles):
