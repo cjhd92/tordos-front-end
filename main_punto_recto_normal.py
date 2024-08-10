@@ -6,27 +6,24 @@ import pandas as pd
 import os
 #versio 1
 
-""" 
-def validar_telefono(telefono):
-   
-    return telefono.isdigit() and len(telefono) == 9 """
+
 
 def validar_telefono(telefono):
     """Función para validar el número de teléfono con exactamente 9 dígitos."""
-    import re
-    # Expresión regular para permitir solo dígitos
-    patron = r'^\d{9}$'
-    if re.match(patron, telefono):
-        return True
-    return False
+    return telefono.isdigit() and len(telefono) == 9
+
 
 
 def seleccionar_proximo_valor_disponible(medida, valores_disponibles):
-    """Encuentra el próximo valor más alto disponible si la medida exacta no está presente."""
+    medida = float(medida)
     index = bisect.bisect_left(valores_disponibles, medida)
     if index == len(valores_disponibles):
         index -= 1  # Si es más grande que cualquier valor, use el último disponible
     return valores_disponibles[index]
+
+
+    
+    
 
 def seleccionar_proximo_precio_tejadillo(medida, precios_tejadillo):
     """Determina el precio del tejadillo basado en la medida más cercana hacia arriba."""
@@ -40,8 +37,8 @@ def seleccionar_proximo_precio_tejadillo(medida, precios_tejadillo):
 def obtener_nuevo_presupuesto():
     """Lee el último presupuesto del archivo Excel y lo incrementa en 1."""
     
-    #file_path = "C:/Equipo/Curso/Jorge/Manejo de datos/assets/presupuestos.xlsx"
-    file_path = 'assets/presupuestos.xlsx'
+    file_path = "C:/Equipo/Curso/Jorge/Manejo de datos/assets/presupuestos.xlsx"
+    #file_path = 'assets/presupuestos.xlsx'
     # Comprobar si el archivo existe
     if os.path.exists(file_path):
         df = pd.read_excel(file_path)
@@ -56,8 +53,8 @@ def obtener_nuevo_presupuesto():
 
 def actualizar_excel_con_presupuesto(nuevo_presupuesto):
     """Actualiza el archivo Excel con el nuevo presupuesto."""
-    #file_path = "C:/Equipo/Curso/Jorge/Manejo de datos/assets/presupuestos.xlsx"
-    file_path = 'assets/presupuestos.xlsx'
+    file_path = "C:/Equipo/Curso/Jorge/Manejo de datos/assets/presupuestos.xlsx"
+    #file_path = 'assets/presupuestos.xlsx'
     if os.path.exists(file_path):
         df = pd.read_excel(file_path)
     else:
@@ -74,6 +71,11 @@ def actualizar_excel_con_presupuesto(nuevo_presupuesto):
     # Guardar el DataFrame en el archivo Excel
     df.to_excel(file_path, index=False)
 
+
+
+def capitalizar_nombre(nombre):
+    """Función para capitalizar cada palabra en el nombre."""
+    return ' '.join(word.capitalize() for word in nombre.split())
 
 
 def main():
@@ -116,14 +118,28 @@ def main():
     col1, col2 = st.columns(2)
     with col1:
         st.session_state.cliente = st.text_input("Nombre:", value=st.session_state.cliente)
+        if st.session_state.cliente:
+            nombre_input = st.session_state.cliente
+            capitalized_name = capitalizar_nombre(nombre_input)
+            st.session_state.cliente = capitalized_name
 
     with col2:
-        st.session_state.telefono = st.text_input("Teléfono:", value=st.session_state.telefono)
+        st.session_state.telefono = st.text_input("Teléfono:", value=st.session_state.telefono, max_chars=9)
+        # Validar el teléfono después de la entrada
+        if st.session_state.telefono:
+            if st.session_state.telefono.isdigit() and len(st.session_state.telefono) == 9:
+                st.session_state.telefono = st.session_state.telefono
+                st.success("Número de teléfono válido")
+            else:
+                st.error("Por favor, ingresa un número de teléfono válido de 9 dígitos.")
+
+        # Limpiar caracteres no numéricos
+        st.session_state.telefono = ''.join(filter(str.isdigit, st.session_state.telefono))
 
     st.header("Parámetros del Toldo")
     st.subheader("**Medidas:**")
-    linea_input = st.number_input("Linea (m):", min_value=1.50, step=0.1, format="%.2f")
-    brazo_input = st.number_input("Brazo (m):", min_value=0.80, step=0.1, format="%.2f")
+    linea_input = st.number_input("Linea (m):", min_value=1.50, max_value=6.00, step=0.1, format="%.2f")
+    brazo_input = st.number_input("Brazo (m):", min_value=0.80, max_value=1.55, step=0.05, format="%.2f")
 
     linea = Decimal(linea_input).quantize(Decimal('0.00'))
     brazo = Decimal(brazo_input).quantize(Decimal('0.00'))
@@ -132,11 +148,16 @@ def main():
     brazos_disponibles = sorted(next(iter(precios.values())).keys())
 
     linea_seleccionada = seleccionar_proximo_valor_disponible(linea, lineas_disponibles)
+   
     brazo_seleccionado = seleccionar_proximo_valor_disponible(brazo, brazos_disponibles)
+
+
+
+    
 
     try:
         precio = precios[linea_seleccionada][brazo_seleccionado]
-        st.write(f"El precio para Linea {linea_seleccionada} m y Brazo {brazo_seleccionado} m es de EUR{precio}")
+        st.write(f"El precio para Linea {linea_seleccionada} m y Brazo {brazo_seleccionado} m es de {precio} EUR")
     except KeyError:
         st.error("Combinación de medidas no disponible.")
 
@@ -202,9 +223,9 @@ def main():
             pdf.add_page()
             pdf.set_font("Arial", size=12)
 
-            #pdf.image('C:/Equipo/Curso/Jorge/Manejo de datos/assets/logo.png', 10, 8, 33,25)  # Asegúrate de usar la ruta correcta al logo
+            pdf.image('C:/Equipo/Curso/Jorge/Manejo de datos/assets/logo.png', 10, 8, 33,25)  # Asegúrate de usar la ruta correcta al logo
                  
-            pdf.image('assets/logo.png', 10, 8, 33, 25)  # Cambia la ruta de la imagen
+            #pdf.image('assets/logo.png', 10, 8, 33, 25)  # Cambia la ruta de la imagen
             #pdf.cell(200, 10, txt=f"Presupuesto (0062.3/2024)", ln=True, align='C')
             pdf.cell(200, 10, txt=f"Presupuesto ({nuevo_presupuesto}/2024)", ln=True, align='C')
 
@@ -282,26 +303,28 @@ def main():
             if faldon and medida_faldon > 0:
                 y_inicio += 8
                 pdf.set_xy(x_inicio, y_inicio)
-                pdf.cell(ancho_descripcion, 10, f'Faldon: {opcion_faldon} - {medida_faldon} m', border=0, ln=0)
+                pdf.cell(ancho_descripcion, 10, f'Faldon: {opcion_faldon} de {medida_faldon} m', border=0, ln=0)
                 pdf.cell(ancho_ud, 10, '1', border=0, ln=0)
                 pdf.cell(ancho_precio, 10, f'{precio_faldon} EUR', border=0, ln=0)
                 pdf.cell(ancho_total, 10, f'{precio_faldon} EUR', border=0, ln=1)
 
             y_inicio += 30
             pdf.line(10, y_inicio, 180, y_inicio)
+
             y_inicio += 8
             pdf.set_xy(x_inicio, y_inicio)
             pdf.cell(left_column_width, 10, f'Con la aprobación del presupuesto el', border=0, ln=0)
             pdf.set_xy(120, y_inicio)
-            
             pdf.cell(right_column_width, 10, f'Sub - Total      {precio_descuento} EUR', border=0, ln=0)
+
             y_inicio += 6
             iva = precio_descuento * 0.21
             iva = round(iva, 2)
+
             pdf.set_xy(x_inicio, y_inicio)
             pdf.cell(left_column_width, 10, f'cliente debe abonar el 50% del monto ', border=0, ln=0)
             pdf.set_xy(120, y_inicio)
-            pdf.cell(right_column_width, 10, f'IVA 21%         {iva:.2f} EUR', border=0, ln=0)
+            pdf.cell(right_column_width, 10, f'IVA 21%          {iva:.2f} EUR', border=0, ln=0)
             total_con_iva = iva + precio_descuento
             total_con_iva = round(total_con_iva, 2)
             y_inicio += 6
