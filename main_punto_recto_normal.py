@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import requests
 import io
+from io import BytesIO
 #versio 1
 
 
@@ -346,11 +347,12 @@ def main():
             pdf.cell(left_column_width, 10, f'IBAN: ES18 0182 2741 1102 0160 5004', border=0, ln=0)
 
             #pdf.output("pedido.pdf")
-            pdf_buffer = io.BytesIO()
-            pdf.output(pdf_buffer)
+            pdf_output = BytesIO()
+            pdf.output(pdf_output)
+            pdf_output.seek(0)  # Vuelve al comienzo del buffer para futuras operaciones
             st.success("Pedido enviado con éxito y PDF generado!")
-            pdf.buffer.seek(0)
-            files = {'file': ('filename.pdf', pdf_buffer, 'application/pdf')}
+            
+            files = {'file': ('filename.pdf', pdf_output, 'application/pdf')}
             response = requests.post('https://nestmongopasteleria-production.up.railway.app/show/upload', files=files)
 
             if response.status_code == 200:
