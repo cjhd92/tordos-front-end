@@ -354,7 +354,7 @@ def main():
 
             try:
                 files = {'file': ('factura_nueva.pdf', pdf_output, 'application/pdf')}
-                response = requests.post('https://nestmongopasteleria-production.up.railway.app/show/upload', files=files)
+                response = requests.post('https://nestmongopasteleria-production.up.railway.app/show', files=files)
                 if response.status_code == 200:
                     return response.json()
                 else:
