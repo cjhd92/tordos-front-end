@@ -4,6 +4,8 @@ import bisect
 from fpdf import FPDF
 import pandas as pd
 import os
+import requests
+import io
 #versio 1
 
 
@@ -166,7 +168,7 @@ def main():
     medida_tejadillo = 0
     precio_tejadillo = 0
     if tejadillo:
-        medida_tejadillo = st.number_input("Medida del Tejadillo (m):", min_value=4.00, step=0.1, format="%.2f")
+        medida_tejadillo = st.number_input("Medida del Tejadillo (m):", min_value=4.00,max_value=7.00 ,step=0.1, format="%.2f")
         medida_tejadillo = Decimal(medida_tejadillo).quantize(Decimal('0.00'))
 
         precios_tejadillo = {
@@ -271,14 +273,20 @@ def main():
             ancho_total = 30
 
             pdf.set_xy(x_inicio, y_inicio)
+            
             pdf.cell(ancho_descripcion, 10, 'DESCRIPCIÓN', border='TB', ln=0)
             pdf.cell(ancho_ud, 10, 'UD', border='TB', ln=0)
             pdf.cell(ancho_precio, 10, 'PRECIO', border='TB', ln=0)
             pdf.cell(ancho_total, 10, 'TOTAL', border='TB', ln=1)
-
             y_inicio += 10
 
             pdf.set_xy(x_inicio, y_inicio)
+            
+            pdf.cell(ancho_descripcion, 10, 'Toldos Punto Recto Normal', border='0', ln=0)
+            y_inicio += 10
+
+            pdf.set_xy(x_inicio, y_inicio)
+            
             pdf.cell(ancho_descripcion, 10, f'Linea: {linea} x Brazo: {brazo}', border=0, ln=0)
             pdf.cell(ancho_ud, 10, '1', border=0, ln=0)
             pdf.cell(ancho_precio, 10, f'{precio} EUR', border=0, ln=0)
@@ -337,8 +345,19 @@ def main():
             pdf.set_xy(x_inicio, y_inicio)
             pdf.cell(left_column_width, 10, f'IBAN: ES18 0182 2741 1102 0160 5004', border=0, ln=0)
 
-            pdf.output("pedido.pdf")
+            #pdf.output("pedido.pdf")
+            pdf_buffer = io.BytesIO()
+            pdf.output(pdf_buffer)
             st.success("Pedido enviado con éxito y PDF generado!")
+            pdf.buffer.seek(0)
+            files = {'file': ('filename.pdf', pdf_buffer, 'application/pdf')}
+            response = requests.post('https://nestmongopasteleria-production.up.railway.app/show/upload', files=files)
+
+            if response.status_code == 200:
+                return response.json()
+            else:
+                raise Exception("Error al cargar el archivo PDF")
+            
             st.download_button(
                 label="Descargar PDF",
                 data=open("pedido.pdf", "rb"),
