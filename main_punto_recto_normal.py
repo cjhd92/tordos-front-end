@@ -351,11 +351,20 @@ def main():
             pdf.output(pdf_output)
             pdf_output.seek(0)  # Vuelve al comienzo del buffer para futuras operaciones
             st.success("Pedido enviado con éxito y PDF generado!")
-            
-            files = {'file': ('filename.pdf', pdf_output, 'application/pdf')}
-            response = requests.post('https://nestmongopasteleria-production.up.railway.app/show/upload', files=files)
 
-            if response.status_code == 200:
+            try:
+                files = {'file': ('factura_nueva.pdf', pdf_output, 'application/pdf')}
+                response = requests.post('https://nestmongopasteleria-production.up.railway.app/show/upload', files=files)
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    raise Exception("Error al cargar el archivo PDF: " + response.text)
+            except Exception as e:
+                print("Error durante la solicitud POST:", e)
+                raise
+            
+            
+            """ if response.status_code == 200:
                 return response.json()
             else:
                 raise Exception("Error al cargar el archivo PDF")
@@ -365,7 +374,7 @@ def main():
                 data=open("pedido.pdf", "rb"),
                 file_name="pedido.pdf",
                 mime="application/octet-stream"
-            )
+            ) """
 
             # Limpiar campos después de generar el presupuesto
             st.session_state.cliente = ''
