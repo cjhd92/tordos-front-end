@@ -1,10 +1,7 @@
-streamlit
-decimal
-bisect
+streamlit==1.37.1
 fpdf
-openpyxl
-pandas
 pymongo
 werkzeug
-bson
 python-dotenv
+pandas
+openpyxl
