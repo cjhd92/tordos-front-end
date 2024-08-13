@@ -3,7 +3,4 @@ decimal
 bisect
 fpdf
 pymongo
-werkzeug
-bson
-python-dotenv
 openpyxl
