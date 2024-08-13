@@ -2,5 +2,4 @@ streamlit
 decimal
 bisect
 fpdf
-pymongo
 openpyxl
