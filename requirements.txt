@@ -1,8 +1,6 @@
-streamlit
-fpdf
+streamlit==1.37.1
 pymongo
 werkzeug
 python-dotenv
 pandas
 openpyxl
-fpdf
