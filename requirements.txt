@@ -3,3 +3,8 @@ decimal
 bisect
 fpdf
 openpyxl
+pandas
+pymongo
+werkzeug
+bson
+python-dotenv
