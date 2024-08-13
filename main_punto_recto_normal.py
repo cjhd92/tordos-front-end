@@ -2,87 +2,201 @@ import streamlit as st
 from decimal import Decimal
 import bisect
 from fpdf import FPDF
-import pandas as pd
-import os
-import requests
-import io
 from io import BytesIO
-#versio 1
+from pymongo import MongoClient
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+
+from bson.binary import Binary
+
+from dotenv import load_dotenv
 
 
+
+
+# Conectar a MongoDB
+uri = "mongodb+srv://cjhd92:cesar123@cluster0.cuuq5et.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+client = MongoClient(uri)
+database_name = "db_pastelera"
+users_collection = client[database_name]["users"]
+facturas_collection = client[database_name]["shows"]
+
+# Funciones de Autenticación
+def register_user(username, email, password):
+    if users_collection.find_one({"username": username}):
+        st.error("El nombre de usuario ya está en uso.")
+        return False
+    password_hash = generate_password_hash(password)
+    users_collection.insert_one({
+        "username": username,
+        "email": email,
+        "password_hash": password_hash,
+        "created_at": datetime.now()
+    })
+    st.success("Usuario registrado exitosamente.")
+    return True
+
+def authenticate_user(username, password):
+    user = users_collection.find_one({"username": username})
+    if user and check_password_hash(user["password_hash"], password):
+        st.session_state["username"] = username
+        st.session_state['page'] = 'Generar Factura'  # Configurar página por defecto
+        st.success("Inicio de sesión exitoso.")
+        return True
+    st.error("Nombre de usuario o contraseña incorrecta.")
+    return False
+
+# Funciones de la Aplicación
+def insertar_numero_factura(nuevo_presupuesto, pdf_bytes):
+    # Documento a insertar
+    factura_document = {
+        "usuario": st.session_state["username"],  # Guardar el nombre del usuario que genera la factura
+        "numero_factura": nuevo_presupuesto,
+        "pdf": Binary(pdf_bytes),  # Guardar el PDF como binario
+        "created_at": datetime.now()
+    }
+
+    try:
+        # Insertar el documento en la colección
+        result = facturas_collection.insert_one(factura_document)
+        st.success(f"Documento insertado con _id: {result.inserted_id}")
+    except Exception as e:
+        st.error(f"Ocurrió un error al insertar la factura: {e}")
+
+def obtener_last_id():
+    ultimo_documento = facturas_collection.find_one(sort=[("_id", -1)])
+    if ultimo_documento:
+        numero_factura = ultimo_documento.get("numero_factura", "Campo no encontrado")
+    else:
+        numero_factura = "P000"
+    return numero_factura
+
+def incrementar_cadena(cadena: str) -> str:
+    parte_alfabetica = ''.join(filter(str.isalpha, cadena))
+    parte_numerica = ''.join(filter(str.isdigit, cadena))
+    nuevo_valor_numerico = int(parte_numerica) + 1
+    nuevo_valor_numerico_str = f"{nuevo_valor_numerico:0{len(parte_numerica)}}"
+    nueva_cadena = parte_alfabetica + nuevo_valor_numerico_str
+    return nueva_cadena
 
 def validar_telefono(telefono):
-    """Función para validar el número de teléfono con exactamente 9 dígitos."""
     return telefono.isdigit() and len(telefono) == 9
 
-
-
-def seleccionar_proximo_valor_disponible(medida, valores_disponibles):
-    medida = float(medida)
-    index = bisect.bisect_left(valores_disponibles, medida)
-    if index == len(valores_disponibles):
-        index -= 1  # Si es más grande que cualquier valor, use el último disponible
-    return valores_disponibles[index]
-
-
-    
-    
-
-def seleccionar_proximo_precio_tejadillo(medida, precios_tejadillo):
-    """Determina el precio del tejadillo basado en la medida más cercana hacia arriba."""
-    medidas_disponibles = sorted(precios_tejadillo.keys())
-    index = bisect.bisect_left(medidas_disponibles, medida)
-    if index == len(medidas_disponibles):
-        index -= 1  # Si es más grande que cualquier valor, use el último disponible
-    return precios_tejadillo[medidas_disponibles[index]]
-
-
-def obtener_nuevo_presupuesto():
-    """Lee el último presupuesto del archivo Excel y lo incrementa en 1."""
-    
-    file_path = "C:/Equipo/Curso/Jorge/Manejo de datos/assets/presupuestos.xlsx"
-    #file_path = 'assets/presupuestos.xlsx'
-    # Comprobar si el archivo existe
-    if os.path.exists(file_path):
-        df = pd.read_excel(file_path)
-        ultimo_presupuesto = df['Presupuesto'].max()
-        numero = int(ultimo_presupuesto[1:])  # Obtener el número, eliminando la letra 'P'
-        nuevo_presupuesto = f"P{numero + 1:03}"  # Formato P001, P002, ...
-    else:
-        # Si el archivo no existe, empezamos con el presupuesto 1
-        nuevo_presupuesto = "P001"
-
-    return nuevo_presupuesto
-
-def actualizar_excel_con_presupuesto(nuevo_presupuesto):
-    """Actualiza el archivo Excel con el nuevo presupuesto."""
-    file_path = "C:/Equipo/Curso/Jorge/Manejo de datos/assets/presupuestos.xlsx"
-    #file_path = 'assets/presupuestos.xlsx'
-    if os.path.exists(file_path):
-        df = pd.read_excel(file_path)
-    else:
-        df = pd.DataFrame(columns=['Presupuesto'])
-
-    
-    
-    # Crear un nuevo DataFrame con el presupuesto a añadir
-    nuevo_df = pd.DataFrame({'Presupuesto': [nuevo_presupuesto]})
-    
-    # Concatenar el nuevo presupuesto al DataFrame existente
-    df = pd.concat([df, nuevo_df], ignore_index=True)
-    
-    # Guardar el DataFrame en el archivo Excel
-    df.to_excel(file_path, index=False)
-
-
-
 def capitalizar_nombre(nombre):
-    """Función para capitalizar cada palabra en el nombre."""
     return ' '.join(word.capitalize() for word in nombre.split())
 
-
 def main():
-    # Diccionario de precios, sustituye con los valores reales de tu tabla
+    # Verificar si el usuario está autenticado
+   
+    pasar = False
+    if "username" not in st.session_state:
+        print("IF")
+        # Si no hay usuario autenticado, mostrar el formulario de login/registro
+        st.sidebar.title("Bienvenido")
+        page = st.sidebar.radio("Navegar", ["Iniciar Sesión", "Registrarse"])
+        print(page)
+
+        if page == "Iniciar Sesión":
+            show_login_page()
+            
+            
+           
+            
+        elif page == "Registrarse":
+            show_registration_page()
+
+        
+        
+        
+    else:
+        print("ELSE")
+        
+        # Si el usuario está autenticado, mostrar la aplicación principal
+        st.sidebar.title(f"Bienvenido, {st.session_state['username']}!")
+        page = st.sidebar.radio("Navegar", ["Generar Factura", "Cerrar Sesión"])
+
+        if page == "Generar Factura":
+            nuevo_presupuesto = obtener_last_id()
+            nuevo_presupuesto = incrementar_cadena(nuevo_presupuesto)
+            show_invoice_form(nuevo_presupuesto)
+        elif page == "Cerrar Sesión":
+            del st.session_state["username"]  # Eliminar el usuario de la sesión
+            show_logout_page()
+    
+    
+    
+    
+
+
+def show_logout_page():
+    st.title("Sesión Cerrada")
+    st.write("Has cerrado la sesión exitosamente. Puedes cerrar esta ventana.")
+
+def show_login_page():
+    st.title("Inicio de Sesión")
+    with st.form("login_form"):
+        username = st.text_input("Nombre de Usuario")
+        password = st.text_input("Contraseña", type="password")
+        login_button = st.form_submit_button("Iniciar Sesión")
+
+    if login_button:
+        if authenticate_user(username, password):
+            # Cambia el estado para redirigir al usuario
+            st.session_state['logged_in'] = True
+            return True
+    return False
+                
+            
+    
+
+def show_registration_page():
+    st.title("Registro")
+    with st.form("register_form"):
+        username = st.text_input("Nombre de Usuario")
+        email = st.text_input("Email")
+        password = st.text_input("Contraseña", type="password")
+        register_button = st.form_submit_button("Registrar")
+        
+    if register_button:
+        register_user(username, email, password)
+
+def show_invoice_form(nuevo_presupuesto):
+    st.title("Hoja de Pedido para Toldos Punto Recto Normal")
+    # Lógica para el formulario de creación de facturas
+    # Inicializar los valores en el estado de sesión si no existen
+    if 'cliente' not in st.session_state:
+        st.session_state.cliente = ''
+    if 'localidad' not in st.session_state:
+        st.session_state.localidad = ''
+    if 'telefono' not in st.session_state:
+        st.session_state.telefono = ''
+
+   
+
+    fecha = st.date_input("Fecha:")
+    st.session_state.localidad = st.text_input("Dirección:", value=st.session_state.localidad)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.session_state.cliente = st.text_input("Nombre:", value=st.session_state.cliente)
+        if st.session_state.cliente:
+            nombre_input = st.session_state.cliente
+            capitalized_name = capitalizar_nombre(nombre_input)
+            st.session_state.cliente = capitalized_name
+
+    with col2:
+        st.session_state.telefono = st.text_input("Teléfono:", value=st.session_state.telefono, max_chars=9)
+        if st.session_state.telefono:
+            if st.session_state.telefono.isdigit() and len(st.session_state.telefono) == 9:
+                st.session_state.telefono = st.session_state.telefono
+                st.success("Número de teléfono válido")
+            else:
+                st.error("Por favor, ingresa un número de teléfono válido de 9 dígitos.")
+
+        st.session_state.telefono = ''.join(filter(str.isdigit, st.session_state.telefono))
+
+    st.header("Parámetros del Toldo")
+    st.subheader("**Medidas:**")
     precios = {
         1.50: {0.80: 370, 1.00: 400, 1.20: 408, 1.40: 434, 1.50: 460},
         1.75: {0.80: 380, 1.00: 406, 1.20: 430, 1.40: 448, 1.50: 478},
@@ -105,42 +219,6 @@ def main():
         6.00: {0.80: 780, 1.00: 838, 1.20: 884, 1.40: 914, 1.50: 936},
     }
 
-    # Inicializar los valores en el estado de sesión si no existen
-    if 'cliente' not in st.session_state:
-        st.session_state.cliente = ''
-    if 'localidad' not in st.session_state:
-        st.session_state.localidad = ''
-    if 'telefono' not in st.session_state:
-        st.session_state.telefono = ''
-
-    st.title("Hoja de Pedido para Toldos Punto Recto Normal")
-
-    fecha = st.date_input("Fecha:")
-    st.session_state.localidad = st.text_input("Dirección:", value=st.session_state.localidad)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.session_state.cliente = st.text_input("Nombre:", value=st.session_state.cliente)
-        if st.session_state.cliente:
-            nombre_input = st.session_state.cliente
-            capitalized_name = capitalizar_nombre(nombre_input)
-            st.session_state.cliente = capitalized_name
-
-    with col2:
-        st.session_state.telefono = st.text_input("Teléfono:", value=st.session_state.telefono, max_chars=9)
-        # Validar el teléfono después de la entrada
-        if st.session_state.telefono:
-            if st.session_state.telefono.isdigit() and len(st.session_state.telefono) == 9:
-                st.session_state.telefono = st.session_state.telefono
-                st.success("Número de teléfono válido")
-            else:
-                st.error("Por favor, ingresa un número de teléfono válido de 9 dígitos.")
-
-        # Limpiar caracteres no numéricos
-        st.session_state.telefono = ''.join(filter(str.isdigit, st.session_state.telefono))
-
-    st.header("Parámetros del Toldo")
-    st.subheader("**Medidas:**")
     linea_input = st.number_input("Linea (m):", min_value=1.50, max_value=6.00, step=0.1, format="%.2f")
     brazo_input = st.number_input("Brazo (m):", min_value=0.80, max_value=1.55, step=0.05, format="%.2f")
 
@@ -151,12 +229,7 @@ def main():
     brazos_disponibles = sorted(next(iter(precios.values())).keys())
 
     linea_seleccionada = seleccionar_proximo_valor_disponible(linea, lineas_disponibles)
-   
     brazo_seleccionado = seleccionar_proximo_valor_disponible(brazo, brazos_disponibles)
-
-
-
-    
 
     try:
         precio = precios[linea_seleccionada][brazo_seleccionado]
@@ -169,7 +242,8 @@ def main():
     medida_tejadillo = 0
     precio_tejadillo = 0
     if tejadillo:
-        medida_tejadillo = st.number_input("Medida del Tejadillo (m):", min_value=4.00,max_value=7.00 ,step=0.1, format="%.2f")
+        medida_tejadillo = st.number_input("Medida del Tejadillo (m):", min_value=4.00, max_value=7.00, step=0.1,
+                                           format="%.2f")
         medida_tejadillo = Decimal(medida_tejadillo).quantize(Decimal('0.00'))
 
         precios_tejadillo = {
@@ -213,25 +287,18 @@ def main():
 
     if st.session_state.cliente and st.session_state.localidad and st.session_state.telefono:
         if st.button("Hacer Presupuesto"):
-            # Validar el número de teléfono
             if not validar_telefono(st.session_state.telefono):
                 st.error("El número de teléfono debe tener exactamente 9 dígitos.")
                 return
-            
-            # Obtener y actualizar el presupuesto
-            nuevo_presupuesto = obtener_nuevo_presupuesto()
-            actualizar_excel_con_presupuesto(nuevo_presupuesto)
-            
+
+            pdf_buffer = BytesIO()
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", size=12)
 
-            pdf.image('C:/Equipo/Curso/Jorge/Manejo de datos/assets/logo.png', 10, 8, 33,25)  # Asegúrate de usar la ruta correcta al logo
-                 
-            #pdf.image('assets/logo.png', 10, 8, 33, 25)  # Cambia la ruta de la imagen
-            #pdf.cell(200, 10, txt=f"Presupuesto (0062.3/2024)", ln=True, align='C')
+            #pdf.image('C:/Equipo/Curso/Jorge/Manejo de datos/assets/logo.png', 10, 8, 33, 25)  # Asegúrate de usar la ruta correcta al logo
+            pdf.image('assets/logo.png', 10, 8, 33, 25)
             pdf.cell(200, 10, txt=f"Presupuesto ({nuevo_presupuesto}/2024)", ln=True, align='C')
-
 
             pdf.set_xy(10, 40)
             left_column_width = 90
@@ -244,7 +311,7 @@ def main():
             pdf.cell(left_column_width, 10, 'Xeraco Playa, Valencia', 0, 1, 'L')
             pdf.cell(left_column_width, 10, 'NIF: Y69018187Z', 0, 1, 'L')
             pdf.cell(left_column_width, 10, 'Telefono: +34 611 078 238', 0, 1, 'L')
-        
+
             pdf.set_xy(100, 40)
             pdf.cell(right_column_width, 10, 'Presupuestar:', 0, 1, 'L')
             pdf.set_xy(100, 50)
@@ -274,7 +341,7 @@ def main():
             ancho_total = 30
 
             pdf.set_xy(x_inicio, y_inicio)
-            
+
             pdf.cell(ancho_descripcion, 10, 'DESCRIPCIÓN', border='TB', ln=0)
             pdf.cell(ancho_ud, 10, 'UD', border='TB', ln=0)
             pdf.cell(ancho_precio, 10, 'PRECIO', border='TB', ln=0)
@@ -282,12 +349,12 @@ def main():
             y_inicio += 10
 
             pdf.set_xy(x_inicio, y_inicio)
-            
+
             pdf.cell(ancho_descripcion, 10, 'Toldos Punto Recto Normal', border='0', ln=0)
             y_inicio += 10
 
             pdf.set_xy(x_inicio, y_inicio)
-            
+
             pdf.cell(ancho_descripcion, 10, f'Linea: {linea} x Brazo: {brazo}', border=0, ln=0)
             pdf.cell(ancho_ud, 10, '1', border=0, ln=0)
             pdf.cell(ancho_precio, 10, f'{precio} EUR', border=0, ln=0)
@@ -340,47 +407,44 @@ def main():
             pdf.set_xy(x_inicio, y_inicio)
             pdf.cell(left_column_width, 10, f'total en calidadde reserva y fabricación.', border=0, ln=0)
             pdf.set_xy(120, y_inicio)
-            
+
             pdf.cell(right_column_width, 10, f'TOTAL            {total_con_iva} EUR', border=0, ln=0)
             y_inicio += 6
             pdf.set_xy(x_inicio, y_inicio)
             pdf.cell(left_column_width, 10, f'IBAN: ES18 0182 2741 1102 0160 5004', border=0, ln=0)
 
-            #pdf.output("pedido.pdf")
-            pdf_output = BytesIO()
-            pdf.output(pdf_output)
-            pdf_output.seek(0)  # Vuelve al comienzo del buffer para futuras operaciones
-            st.success("Pedido enviado con éxito y PDF generado!")
+            pdf.output(pdf_buffer)
+            pdf_bytes = pdf_buffer.getvalue()
 
-            try:
-                files = {'file': ('factura_nueva.pdf', pdf_output, 'application/pdf')}
-                response = requests.post('https://nestmongopasteleria-production.up.railway.app/show', files=files)
-                if response.status_code == 200:
-                    return response.json()
-                else:
-                    raise Exception("Error al cargar el archivo PDF: " + response.text)
-            except Exception as e:
-                print("Error durante la solicitud POST:", e)
-                raise
-            
-            
-            """ if response.status_code == 200:
-                return response.json()
-            else:
-                raise Exception("Error al cargar el archivo PDF")
-            
+            insertar_numero_factura(nuevo_presupuesto, pdf_bytes)
+
             st.download_button(
                 label="Descargar PDF",
-                data=open("pedido.pdf", "rb"),
+                data=pdf_bytes,
                 file_name="pedido.pdf",
-                mime="application/octet-stream"
-            ) """
+                mime="application/pdf"
+            )
 
-            # Limpiar campos después de generar el presupuesto
+            st.success("Pedido enviado con éxito y PDF generado!")
+
             st.session_state.cliente = ''
             st.session_state.localidad = ''
             st.session_state.telefono = ''
-        
+
+def seleccionar_proximo_valor_disponible(medida, valores_disponibles):
+    medida = float(medida)
+    index = bisect.bisect_left(valores_disponibles, medida)
+    if index == len(valores_disponibles):
+        index -= 1
+    return valores_disponibles[index]
+
+def seleccionar_proximo_precio_tejadillo(medida, precios_tejadillo):
+    medidas_disponibles = sorted(precios_tejadillo.keys())
+    index = bisect.bisect_left(medidas_disponibles, medida)
+    if index == len(medidas_disponibles):
+        index -= 1
+    return precios_tejadillo[medidas_disponibles[index]]
 
 if __name__ == "__main__":
     main()
+    
