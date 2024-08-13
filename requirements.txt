@@ -1,5 +1,9 @@
 streamlit
-pandas
-openpyxl
+decimal
+bisect
 fpdf
 pymongo
+werkzeug
+bson
+python-dotenv
+openpyxl
