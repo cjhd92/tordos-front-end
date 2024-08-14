@@ -421,10 +421,6 @@ def show_invoice_form(nuevo_presupuesto):
             pdf_bytes = pdf_buffer.getvalue()  # Obtener los datos binarios del PDF
 
             
-
-            """ pdf.output(pdf_buffer)
-            pdf_bytes = pdf_buffer.getvalue() """
-            #pdf_buffer.close()
             # Verificar si el PDF fue generado correctamente
             if pdf_bytes:
                 st.write(f"Tamaño del PDF generado: {len(pdf_bytes)} bytes")
