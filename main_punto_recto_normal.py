@@ -59,7 +59,7 @@ def insertar_numero_factura(nuevo_presupuesto, pdf_bytes):
     try:
         # Insertar el documento en la colección
         result = facturas_collection.insert_one(factura_document)
-        st.success(f"Documento insertado con _id: {result.inserted_id}")
+        
     except Exception as e:
         st.error(f"Ocurrió un error al insertar la factura: {e}")
 
@@ -413,11 +413,14 @@ def show_invoice_form(nuevo_presupuesto):
             pdf.set_xy(x_inicio, y_inicio)
             pdf.cell(left_column_width, 10, f'IBAN: ES18 0182 2741 1102 0160 5004', border=0, ln=0)
 
+            
+            #Para que funcione remoto
             pdf_content =  pdf.output(dest='S').encode('latin1')  # Obtener el contenido del PDF como una cadena y codificarlo
             pdf_buffer = BytesIO(pdf_content)
-            #pdf.output(pdf_buffer,'F')
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()  # Obtener los datos binarios del PDF
+
+            
 
             """ pdf.output(pdf_buffer)
             pdf_bytes = pdf_buffer.getvalue() """
