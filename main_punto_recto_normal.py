@@ -418,7 +418,7 @@ def show_invoice_form(nuevo_presupuesto):
 
             """ pdf.output(pdf_buffer)
             pdf_bytes = pdf_buffer.getvalue() """
-            pdf_buffer.close()
+            #pdf_buffer.close()
 
             insertar_numero_factura(nuevo_presupuesto, pdf_bytes)
 
