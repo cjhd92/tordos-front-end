@@ -413,8 +413,9 @@ def show_invoice_form(nuevo_presupuesto):
             pdf.set_xy(x_inicio, y_inicio)
             pdf.cell(left_column_width, 10, f'IBAN: ES18 0182 2741 1102 0160 5004', border=0, ln=0)
 
-            pdf.output(pdf_buffer,'F')
+            pdf.output(pdf_buffer)
             pdf_bytes = pdf_buffer.getvalue()
+            pdf_buffer.close()
 
             insertar_numero_factura(nuevo_presupuesto, pdf_bytes)
 
