@@ -413,15 +413,21 @@ def show_invoice_form(nuevo_presupuesto):
             pdf.set_xy(x_inicio, y_inicio)
             pdf.cell(left_column_width, 10, f'IBAN: ES18 0182 2741 1102 0160 5004', border=0, ln=0)
 
-            #pdf.output(dest='S').encode('latin1')  # Obtener el contenido del PDF como una cadena y codificarlo
-            pdf.output(pdf_buffer)
+            pdf.output(dest='S').encode('latin1')  # Obtener el contenido del PDF como una cadena y codificarlo
+            #pdf.output(pdf_buffer)
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()  # Obtener los datos binarios del PDF
 
             """ pdf.output(pdf_buffer)
             pdf_bytes = pdf_buffer.getvalue() """
             #pdf_buffer.close()
+            # Verificar si el PDF fue generado correctamente
+            if pdf_bytes:
+                st.write(f"Tamaño del PDF generado: {len(pdf_bytes)} bytes")
+            else:
+                st.error("El PDF no fue generado correctamente.")
 
+            
             insertar_numero_factura(nuevo_presupuesto, pdf_bytes)
 
             st.download_button(
@@ -432,6 +438,9 @@ def show_invoice_form(nuevo_presupuesto):
             )
 
             st.success("Pedido enviado con éxito y PDF generado!")
+            # Cerrar el buffer después de obtener los datos binarios
+            pdf_buffer.close()
+
 
             st.session_state.cliente = ''
             st.session_state.localidad = ''
