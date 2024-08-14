@@ -412,10 +412,10 @@ def show_invoice_form(nuevo_presupuesto):
             y_inicio += 6
             pdf.set_xy(x_inicio, y_inicio)
             pdf.cell(left_column_width, 10, f'IBAN: ES18 0182 2741 1102 0160 5004', border=0, ln=0)
-            
-            pdf_buffer = BytesIO()
-            #pdf.output(dest='S').encode('latin1')  # Obtener el contenido del PDF como una cadena y codificarlo
-            pdf.output(pdf_buffer,'F')
+
+            pdf_content =  pdf.output(dest='S').encode('latin1')  # Obtener el contenido del PDF como una cadena y codificarlo
+            pdf_buffer = BytesIO(pdf_content)
+            #pdf.output(pdf_buffer,'F')
             pdf_buffer.seek(0)
             pdf_bytes = pdf_buffer.getvalue()  # Obtener los datos binarios del PDF
 
